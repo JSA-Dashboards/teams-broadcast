@@ -464,7 +464,7 @@ with tab_broadcast:
             default=target_ids,
             format_func=lambda x: chat_lookup.get(x, x),
             label_visibility="collapsed",
-            key=f"refine_{st.session_state.message_key}",
+            key=f"refine_{st.session_state.message_key}_{selected}",
         )
 
     st.caption(f"{len(target_ids)} chat(s) selected")
@@ -591,7 +591,7 @@ with tab_whatsapp:
             wa_target_ids = st.multiselect(
                 "WA Recipients", options=wa_target_ids, default=wa_target_ids,
                 format_func=lambda x: wa_chat_lookup.get(x, x),
-                label_visibility="collapsed", key=f"wa_refine_{st.session_state.wa_message_key}"
+                label_visibility="collapsed", key=f"wa_refine_{st.session_state.wa_message_key}_{wa_selected}"
             )
 
         st.caption(f"{len(wa_target_ids)} chat(s) selected")
