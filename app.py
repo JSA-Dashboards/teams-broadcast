@@ -448,7 +448,7 @@ with tab_broadcast:
             cols[i % 4].image(f, use_container_width=True)
 
     group_options = ["— All Chats —"] + sorted(groups.get("subgroups", {}).keys())
-    selected = st.selectbox("Send to", group_options)
+    selected = st.selectbox("Send to", group_options, key="teams_group_select")
 
     if selected == "— All Chats —":
         target_ids = [c["id"] for c in chats]
