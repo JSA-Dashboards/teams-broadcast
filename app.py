@@ -689,10 +689,12 @@ with tab_groups:
             edit_target = st.selectbox("Select group to edit", list(groups["subgroups"].keys()), key="edit_target")
             current = groups["subgroups"].get(edit_target, [])
 
+            # Include saved IDs even if not in current fetch — don't silently drop them
+            all_options = list({cid: None for cid in list(chat_lookup.keys()) + current}.keys())
             chosen = st.multiselect(
                 "Chats in this group",
-                options=list(chat_lookup.keys()),
-                default=[cid for cid in current if cid in chat_lookup],
+                options=all_options,
+                default=current,
                 format_func=lambda x: chat_lookup.get(x, x),
             )
 
@@ -710,10 +712,11 @@ with tab_groups:
     all_chat_lookup = {c["id"]: chat_label(c) for c in st.session_state.chats}
     current_hidden = groups.get("hidden", [])
 
+    all_hidden_options = list({cid: None for cid in list(all_chat_lookup.keys()) + current_hidden}.keys())
     new_hidden = st.multiselect(
         "Select chats to hide",
-        options=list(all_chat_lookup.keys()),
-        default=[cid for cid in current_hidden if cid in all_chat_lookup],
+        options=all_hidden_options,
+        default=current_hidden,
         format_func=lambda x: all_chat_lookup.get(x, x),
     )
 
