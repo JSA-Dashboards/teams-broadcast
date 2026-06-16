@@ -453,7 +453,7 @@ with tab_broadcast:
     if selected == "— All Chats —":
         target_ids = [c["id"] for c in chats]
     else:
-        target_ids = groups["subgroups"].get(selected, [])
+        target_ids = [cid for cid in groups["subgroups"].get(selected, []) if cid not in hidden_ids]
 
     with st.expander(f"Refine recipients ({len(target_ids)} selected)", expanded=False):
         st.caption("Uncheck any chats to skip them for this send only — does not modify the saved group.")
