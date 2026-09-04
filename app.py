@@ -447,13 +447,10 @@ with tab_broadcast:
         for i, f in enumerate(uploaded_files):
             cols[i % 4].image(f, use_container_width=True)
 
-    group_options = ["— All Chats —"] + sorted(groups.get("subgroups", {}).keys())
+    group_options = sorted(groups.get("subgroups", {}).keys())
     selected = st.selectbox("Send to", group_options, key="teams_group_select")
 
-    if selected == "— All Chats —":
-        target_ids = [c["id"] for c in chats]
-    else:
-        target_ids = [cid for cid in groups["subgroups"].get(selected, []) if cid not in hidden_ids]
+    target_ids = [cid for cid in groups["subgroups"].get(selected, []) if cid not in hidden_ids]
 
     with st.expander(f"Refine recipients ({len(target_ids)} selected)", expanded=False):
         st.caption("Uncheck any chats to skip them for this send only — does not modify the saved group.")
@@ -462,7 +459,7 @@ with tab_broadcast:
             "Recipients",
             options=target_ids,
             default=target_ids,
-            format_func=lambda x: chat_lookup.get(x, x),
+            format_func=lambda x: chat_lookup.get(x, f"⚠️ Unknown — {x}"),
             label_visibility="collapsed",
             key=f"refine_{st.session_state.message_key}_{selected}",
         )
@@ -578,21 +575,21 @@ with tab_whatsapp:
             for i, f in enumerate(wa_uploaded):
                 cols[i % 4].image(f, use_container_width=True)
 
-        wa_group_options = ["— All Chats —"] + sorted(wa_groups.get("subgroups", {}).keys())
+        wa_group_options = sorted(wa_groups.get("subgroups", {}).keys())
         wa_selected = st.selectbox("Send to", wa_group_options, key="wa_group_select")
 
-        if wa_selected == "— All Chats —":
-            wa_target_ids = [c["id"] for c in wa_chats]
-        else:
-            wa_target_ids = wa_groups["subgroups"].get(wa_selected, [])
+        wa_target_ids = wa_groups["subgroups"].get(wa_selected, [])
 
         with st.expander(f"Refine recipients ({len(wa_target_ids)} selected)", expanded=False):
             st.caption("Uncheck any contacts to skip for this send only.")
             wa_target_ids = st.multiselect(
                 "WA Recipients", options=wa_target_ids, default=wa_target_ids,
-                format_func=lambda x: wa_chat_lookup.get(x, x),
+                format_func=lambda x: wa_chat_lookup.get(x, f"⚠️ Unknown — {x}"),
                 label_visibility="collapsed", key=f"wa_refine_{st.session_state.wa_message_key}_{wa_selected}"
             )
+            _unknown_send = [x for x in wa_target_ids if x not in wa_chat_lookup]
+            if _unknown_send:
+                st.warning(f"⚠️ {len(_unknown_send)} unrecognized chat ID(s) in this group — fix in Manage Groups tab.")
 
         st.caption(f"{len(wa_target_ids)} chat(s) selected")
 
@@ -661,6 +658,12 @@ with tab_whatsapp:
 with tab_groups:
     st.subheader("📣 Teams Subgroups")
 
+    if st.button("🔄 Refresh Teams chat list", key="teams_refresh_manage"):
+        with st.spinner("Reloading Teams chats..."):
+            st.session_state.chats = fetch_chats(token)
+        st.success(f"Loaded {len(st.session_state.chats)} chats.")
+        st.rerun()
+
     col_left, col_right = st.columns([1, 2])
 
     with col_left:
@@ -695,8 +698,11 @@ with tab_groups:
                 "Chats in this group",
                 options=all_options,
                 default=current,
-                format_func=lambda x: chat_lookup.get(x, x),
+                format_func=lambda x: chat_lookup.get(x, f"⚠️ Unknown (remove & re-add) — {x}"),
             )
+            _teams_unknown = [x for x in chosen if x not in chat_lookup]
+            if _teams_unknown:
+                st.warning(f"{len(_teams_unknown)} unrecognized ID(s) — remove them and re-add the correct chat from the dropdown.")
 
             if st.button("Save Changes", type="primary"):
                 groups["subgroups"][edit_target] = chosen
@@ -733,6 +739,12 @@ with tab_groups:
     if not wa_status_groups or not wa_status_groups.get("ready"):
         st.info("Start the WhatsApp service and connect your WhatsApp account to manage groups.")
     else:
+        if st.button("🔄 Refresh WA chat list", key="wa_refresh_manage"):
+            with st.spinner("Reloading WhatsApp chats..."):
+                st.session_state.wa_chats = wa_get_chats(profile)
+            st.success(f"Loaded {len(st.session_state.wa_chats)} chats.")
+            st.rerun()
+
         if "wa_groups_cache" not in st.session_state:
             st.session_state.wa_groups_cache = load_wa_groups(profile)
         wa_groups_edit = st.session_state.wa_groups_cache
@@ -776,9 +788,12 @@ with tab_groups:
                     "Contacts in this group",
                     options=all_wa_options,
                     default=wa_current,
-                    format_func=lambda x: wa_cl.get(x, x),
+                    format_func=lambda x: wa_cl.get(x, f"⚠️ Unknown (remove & re-add) — {x}"),
                     key="wa_chosen"
                 )
+                _unknown = [x for x in wa_chosen if x not in wa_cl]
+                if _unknown:
+                    st.warning(f"{len(_unknown)} unrecognized ID(s) above — remove them and re-add the correct chat from the current list.")
 
                 if st.button("Save Changes", type="primary", key="wa_save"):
                     wa_groups_edit["subgroups"][wa_edit_target] = wa_chosen
