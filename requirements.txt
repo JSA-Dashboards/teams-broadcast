@@ -1,3 +1,4 @@
-streamlit
+﻿streamlit
 msal
 requests
+snowflake-connector-python>=3.12

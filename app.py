@@ -1,8 +1,9 @@
-import streamlit as st
+﻿import streamlit as st
 import msal
 import requests
 from requests.exceptions import Timeout, ConnectionError as ReqConnError
 import json
+import os
 import base64
 import time
 from pathlib import Path
@@ -23,48 +24,79 @@ WA_SERVICE_URL = st.secrets.get("WA_SERVICE_URL", "http://localhost:3001")
 WA_API_KEY = st.secrets.get("WA_API_KEY", "jpsi-wa-service")
 
 
-# ── Supabase ──────────────────────────────────────────────────────────────────
+# ── Snowflake key/value store ─────────────────────────────────────────────────
+# Replaces the previous Supabase REST store. That store needed a Supabase
+# service-role key, which bypasses row-level security and had to live in this
+# app's secrets; every other JSA dataset is already in Snowflake, so moving
+# here drops that credential entirely. Data lives in JSA.TEAMS_BROADCAST.APP_DATA.
+#
+# The public sb_get/sb_set/sb_delete names are kept so the ~10 call sites below
+# are untouched -- only the storage backend changed.
 
-def _sb_headers():
-    key = st.secrets["SUPABASE_KEY"]
-    return {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+def _sf_secret(name, default=""):
+    """Read from st.secrets first, fall back to the environment."""
+    try:
+        v = st.secrets.get(name, "")
+        if v:
+            return str(v).strip()
+    except Exception:
+        pass
+    return os.environ.get(name, default).strip()
 
-def _sb_url(path=""):
-    return f"{st.secrets['SUPABASE_URL']}/rest/v1/{path}"
+
+@st.cache_resource(show_spinner=False)
+def _sf_conn():
+    import snowflake.connector
+    return snowflake.connector.connect(
+        account=_sf_secret("SNOWFLAKE_ACCOUNT"),
+        user=_sf_secret("SNOWFLAKE_USER"),
+        password=_sf_secret("SNOWFLAKE_PASSWORD"),
+        role=_sf_secret("SNOWFLAKE_ROLE") or None,
+        warehouse=_sf_secret("SNOWFLAKE_WAREHOUSE") or None,
+        database=_sf_secret("SNOWFLAKE_DATABASE") or "JSA",
+        # Defaults to the schema this dashboard owns. SNOWFLAKE_SCHEMA must stay
+        # UNSET in any app bundling more than one Snowflake-backed dashboard, so
+        # each module falls back to its own schema -- setting it globally breaks
+        # whichever module did not get its own value.
+        schema=_sf_secret("SNOWFLAKE_SCHEMA") or "TEAMS_BROADCAST",
+        client_session_keep_alive=True,
+        login_timeout=30,
+    )
 
 
 def sb_get(key, default=None):
     try:
-        resp = requests.get(
-            _sb_url(f"app_data?select=value&key=eq.{requests.utils.quote(key)}"),
-            headers=_sb_headers(), timeout=10
-        )
-        data = resp.json()
-        if data:
-            return json.loads(data[0]["value"])
+        cur = _sf_conn().cursor()
+        cur.execute("SELECT VALUE FROM APP_DATA WHERE KEY = %s", (key,))
+        row = cur.fetchone()
+        if row and row[0]:
+            return json.loads(row[0])
     except Exception as e:
-        st.error(f"Supabase read error ({key}): {e}")
+        st.error(f"Snowflake read error ({key}): {e}")
     return default
 
 
 def sb_set(key, value):
     try:
-        requests.post(
-            _sb_url("app_data"),
-            headers={**_sb_headers(), "Prefer": "resolution=merge-duplicates"},
-            json={"key": key, "value": json.dumps(value)},
-            timeout=10
+        cur = _sf_conn().cursor()
+        cur.execute(
+            """
+            MERGE INTO APP_DATA t
+            USING (SELECT %s AS KEY, %s AS VALUE) s ON t.KEY = s.KEY
+            WHEN MATCHED THEN UPDATE SET t.VALUE = s.VALUE,
+                                         t.UPDATED_AT = CURRENT_TIMESTAMP()
+            WHEN NOT MATCHED THEN INSERT (KEY, VALUE) VALUES (s.KEY, s.VALUE)
+            """,
+            (key, json.dumps(value)),
         )
     except Exception as e:
-        st.error(f"Supabase write error ({key}): {e}")
+        st.error(f"Snowflake write error ({key}): {e}")
 
 
 def sb_delete(key):
     try:
-        requests.delete(
-            _sb_url(f"app_data?key=eq.{requests.utils.quote(key)}"),
-            headers=_sb_headers(), timeout=10
-        )
+        cur = _sf_conn().cursor()
+        cur.execute("DELETE FROM APP_DATA WHERE KEY = %s", (key,))
     except Exception:
         pass
 
