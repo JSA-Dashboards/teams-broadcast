@@ -732,6 +732,7 @@ with tab_groups:
                 options=all_options,
                 default=current,
                 format_func=lambda x: chat_lookup.get(x, f"⚠️ Unknown (remove & re-add) — {x}"),
+                key=f"chosen_{edit_target}",
             )
             _teams_unknown = [x for x in chosen if x not in chat_lookup]
             if _teams_unknown:
@@ -740,7 +741,8 @@ with tab_groups:
             if st.button("Save Changes", type="primary"):
                 groups["subgroups"][edit_target] = chosen
                 save_groups(groups, profile)
-                st.success("Saved.")
+                st.session_state.pop("groups_cache", None)
+                st.rerun()
         else:
             st.info("Create a subgroup on the left to get started.")
 
@@ -831,7 +833,8 @@ with tab_groups:
                 if st.button("Save Changes", type="primary", key="wa_save"):
                     wa_groups_edit["subgroups"][wa_edit_target] = wa_chosen
                     save_wa_groups(wa_groups_edit, profile)
-                    st.success("Saved.")
+                    st.session_state.pop("wa_groups_cache", None)
+                    st.rerun()
             else:
                 st.info("Create a subgroup on the left to get started.")
 
