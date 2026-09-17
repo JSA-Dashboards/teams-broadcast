@@ -584,7 +584,7 @@ with tab_whatsapp:
         # WhatsApp is connected — show broadcast UI
         st.success("✅ WhatsApp connected")
 
-        if "wa_chats" not in st.session_state:
+        if not st.session_state.get("wa_chats"):
             with st.spinner("Loading WhatsApp chats..."):
                 st.session_state.wa_chats = wa_get_chats(profile)
 
@@ -782,7 +782,7 @@ with tab_groups:
             st.session_state.wa_groups_cache = load_wa_groups(profile)
         wa_groups_edit = st.session_state.wa_groups_cache
 
-        if "wa_chats" not in st.session_state:
+        if not st.session_state.get("wa_chats"):
             with st.spinner("Loading WhatsApp chats..."):
                 st.session_state.wa_chats = wa_get_chats(profile)
         wa_cl = {c["id"]: c["name"] for c in st.session_state.wa_chats}
