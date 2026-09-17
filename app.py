@@ -822,7 +822,7 @@ with tab_groups:
                     options=all_wa_options,
                     default=wa_current,
                     format_func=lambda x: wa_cl.get(x, f"⚠️ Unknown (remove & re-add) — {x}"),
-                    key="wa_chosen"
+                    key=f"wa_chosen_{wa_edit_target}"
                 )
                 _unknown = [x for x in wa_chosen if x not in wa_cl]
                 if _unknown:
