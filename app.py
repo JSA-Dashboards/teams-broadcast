@@ -288,9 +288,10 @@ def wa_get_qr(profile=None):
     except Exception:
         return None
 
-def wa_get_chats(profile=None):
+def wa_get_chats(profile=None, force=False):
     try:
-        r = requests.get(f"{WA_SERVICE_URL}/chats", headers=wa_headers(profile), timeout=15)
+        url = f"{WA_SERVICE_URL}/chats" + ("?force=1" if force else "")
+        r = requests.get(url, headers=wa_headers(profile), timeout=15)
         return r.json() if r.status_code == 200 else []
     except Exception:
         return []
@@ -773,7 +774,7 @@ with tab_groups:
     else:
         if st.button("🔄 Refresh WA chat list", key="wa_refresh_manage"):
             with st.spinner("Reloading WhatsApp chats..."):
-                st.session_state.wa_chats = wa_get_chats(profile)
+                st.session_state.wa_chats = wa_get_chats(profile, force=True)
             st.success(f"Loaded {len(st.session_state.wa_chats)} chats.")
             st.rerun()
 
