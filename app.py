@@ -736,33 +736,21 @@ with tab_groups:
             if not _edit_cl:
                 st.info("Teams chats not loaded — click **Refresh Teams chat list** above.")
 
-            # ── Remove section: checkbox per member ───────────────────
-            st.write("**Current members** — uncheck to remove:")
-            keep_list = []
-            if current:
-                for cid in current:
-                    label = _edit_cl.get(cid, f"⚠️ Unknown — {cid}")
-                    keep = st.checkbox(label, value=True, key=f"keep_{edit_target}_{cid}")
-                    if keep:
-                        keep_list.append(cid)
-            else:
-                st.caption("No chats in this group yet.")
-
-            # ── Add section: dropdown of chats not already in group ───
-            current_set = set(current)
-            available = [cid for cid in _edit_cl if cid not in current_set]
-            to_add = st.multiselect(
-                "Add chats to this group",
-                options=available,
-                format_func=lambda x: _edit_cl.get(x, x),
-                key=f"add_{edit_target}",
-                placeholder="Select chats to add...",
+            # Include saved IDs even if not in current fetch — don't silently drop them
+            all_options = list({cid: None for cid in list(_edit_cl.keys()) + current}.keys())
+            chosen = st.multiselect(
+                "Chats in this group",
+                options=all_options,
+                default=current,
+                format_func=lambda x: _edit_cl.get(x, f"⚠️ Unknown (remove & re-add) — {x}"),
+                key=f"chosen_{edit_target}",
             )
-
-            new_list = keep_list + to_add
+            _teams_unknown = [x for x in chosen if x not in _edit_cl]
+            if _teams_unknown:
+                st.warning(f"{len(_teams_unknown)} unrecognized ID(s) — remove them and re-add the correct chat from the dropdown.")
 
             if st.button("Save Changes", type="primary"):
-                groups["subgroups"][edit_target] = new_list
+                groups["subgroups"][edit_target] = chosen
                 save_groups(groups, profile)
                 st.session_state.pop("groups_cache", None)
                 st.rerun()
@@ -840,33 +828,21 @@ with tab_groups:
                 wa_edit_target = st.selectbox("Select group to edit", list(wa_groups_edit["subgroups"].keys()), key="wa_edit_target")
                 wa_current = wa_groups_edit["subgroups"].get(wa_edit_target, [])
 
-                # ── Remove section: checkbox per member ───────────────
-                st.write("**Current members** — uncheck to remove:")
-                wa_keep_list = []
-                if wa_current:
-                    for cid in wa_current:
-                        label = wa_cl.get(cid, f"⚠️ Unknown — {cid}")
-                        keep = st.checkbox(label, value=True, key=f"wa_keep_{wa_edit_target}_{cid}")
-                        if keep:
-                            wa_keep_list.append(cid)
-                else:
-                    st.caption("No contacts in this group yet.")
-
-                # ── Add section: dropdown of chats not already in group
-                wa_current_set = set(wa_current)
-                wa_available = [cid for cid in wa_cl if cid not in wa_current_set]
-                wa_to_add = st.multiselect(
-                    "Add contacts to this group",
-                    options=wa_available,
-                    format_func=lambda x: wa_cl.get(x, x),
-                    key=f"wa_add_{wa_edit_target}",
-                    placeholder="Select contacts to add...",
+                # Include saved IDs even if not in current fetch — don't silently drop them
+                all_wa_options = list({**{c: c for c in wa_current}, **wa_cl}.keys())
+                wa_chosen = st.multiselect(
+                    "Contacts in this group",
+                    options=all_wa_options,
+                    default=wa_current,
+                    format_func=lambda x: wa_cl.get(x, f"⚠️ Unknown (remove & re-add) — {x}"),
+                    key=f"wa_chosen_{wa_edit_target}"
                 )
-
-                wa_new_list = wa_keep_list + wa_to_add
+                _unknown = [x for x in wa_chosen if x not in wa_cl]
+                if _unknown:
+                    st.warning(f"{len(_unknown)} unrecognized ID(s) above — remove them and re-add the correct chat from the current list.")
 
                 if st.button("Save Changes", type="primary", key="wa_save"):
-                    wa_groups_edit["subgroups"][wa_edit_target] = wa_new_list
+                    wa_groups_edit["subgroups"][wa_edit_target] = wa_chosen
                     save_wa_groups(wa_groups_edit, profile)
                     st.session_state.pop("wa_groups_cache", None)
                     st.rerun()
