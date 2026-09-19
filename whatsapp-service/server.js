@@ -60,7 +60,7 @@ async function connectSession(sid) {
   if (!fs.existsSync(SESSION_PATH)) fs.mkdirSync(SESSION_PATH, { recursive: true });
 
   // Reuse or create the session state object
-  const session = existing || { sock: null, isReady: false, qrCodeData: null, chatCache: [] };
+  const session = existing || { sock: null, isReady: false, qrCodeData: null, chatCache: [], groupCache: [], groupCacheTs: 0 };
   session._connecting = true;
   sessions.set(sid, session);
 
@@ -194,13 +194,31 @@ app.get("/chats", async (req, res) => {
   const sid = sessionId(req);
   const s = sessions.get(sid);
   if (!s || !s.isReady) return res.status(503).json({ error: "WhatsApp not ready" });
+  const force = req.query.force === "1";
+  const cacheAge = Date.now() - s.groupCacheTs;
+  const cacheValid = s.groupCache.length > 0 && cacheAge < 5 * 60 * 1000;
   try {
-    const groups = await s.sock.groupFetchAllParticipating();
-    const groupList = Object.values(groups).map((g) => ({
-      id: g.id,
-      name: g.subject,
-      isGroup: true,
-    }));
+    let groupList = s.groupCache;
+    if (!cacheValid || force) {
+      try {
+        const groups = await s.sock.groupFetchAllParticipating();
+        groupList = Object.values(groups).map((g) => ({
+          id: g.id,
+          name: g.subject,
+          isGroup: true,
+        }));
+        s.groupCache = groupList;
+        s.groupCacheTs = Date.now();
+      } catch (rateErr) {
+        // WhatsApp rate-limited the group fetch — fall back to chatCache groups
+        if (s.chatCache.length > 0) {
+          groupList = s.chatCache.filter((c) => c.isGroup);
+          console.log(`[${sid}] groupFetchAllParticipating rate-limited, using chatCache (${groupList.length} groups)`);
+        } else {
+          return res.status(429).json({ error: rateErr.message });
+        }
+      }
+    }
     const groupIds = new Set(groupList.map((g) => g.id));
     const dms = s.chatCache.filter((c) => !groupIds.has(c.id) && !c.isGroup);
     const all = [...groupList, ...dms].sort((a, b) => a.name.localeCompare(b.name));
