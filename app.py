@@ -21,7 +21,9 @@ REQUEST_TIMEOUT = 30  # seconds per Graph API call
 
 # ── WhatsApp service config ───────────────────────────────────────────────────
 WA_SERVICE_URL = st.secrets.get("WA_SERVICE_URL", "http://localhost:3001")
-WA_API_KEY = st.secrets.get("WA_API_KEY", "jpsi-wa-service")
+# No fallback: the old default shipped in a public repo and the live endpoint
+# accepted it. A missing secret must disable WhatsApp visibly, not quietly work.
+WA_API_KEY = st.secrets.get("WA_API_KEY", "")
 
 
 # ── Snowflake key/value store ─────────────────────────────────────────────────
@@ -269,6 +271,12 @@ def chat_label(chat):
 # ── WhatsApp helpers ──────────────────────────────────────────────────────────
 
 def wa_headers(profile=None):
+    if not WA_API_KEY:
+        raise RuntimeError(
+            "WA_API_KEY is not set in this app's secrets, so the WhatsApp "
+            "service cannot be reached. Add it under Manage app -> Settings -> "
+            "Secrets. It must match WA_API_KEY on the droplet."
+        )
     h = {"x-api-key": WA_API_KEY, "Content-Type": "application/json"}
     if profile:
         h["x-session-id"] = profile

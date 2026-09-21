@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const qrcode = require("qrcode");
@@ -18,7 +19,32 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 
 const PORT = process.env.PORT || 3001;
-const API_KEY = process.env.WA_API_KEY || "jpsi-wa-service";
+// Comma-separated so a key can be rotated with NO downtime: run with
+// "new,old", update the callers, then drop the old one.
+//
+// No fallback, on purpose. This service is public at wa.jsa-whatsapp.us and
+// can send WhatsApp messages as real people, read their chat lists and log
+// them out. It previously defaulted to a key hardcoded in this PUBLIC repo,
+// and the live endpoint accepted it from off-network. A missing key must stop
+// the service, never silently open it.
+const API_KEYS = String(process.env.WA_API_KEY || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+if (API_KEYS.length === 0) {
+  console.error("WA_API_KEY is not set - refusing to start.");
+  process.exit(1);
+}
+
+// Constant-time compare so a wrong key cannot be narrowed down by timing.
+function authorized(presented) {
+  if (typeof presented !== "string" || presented.length === 0) return false;
+  const given = Buffer.from(presented);
+  return API_KEYS.some((k) => {
+    const want = Buffer.from(k);
+    return given.length === want.length && crypto.timingSafeEqual(given, want);
+  });
+}
 const SESSIONS_DIR = path.join(__dirname, "wa-session");
 
 // Silent logger
@@ -38,7 +64,7 @@ const sessions = new Map();
 // ── Auth middleware ───────────────────────────────────────────────────────────
 app.use((req, res, next) => {
   if (req.path === "/health") return next();
-  if (req.headers["x-api-key"] !== API_KEY)
+  if (!authorized(req.headers["x-api-key"]))
     return res.status(401).json({ error: "Unauthorized" });
   next();
 });
@@ -280,4 +306,8 @@ app.post("/logout", async (req, res) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => console.log(`WhatsApp service running on port ${PORT}`));
+// Loopback only. nginx terminates TLS and proxies to localhost:3001, so
+// binding 0.0.0.0 put a single ufw rule between this service and the internet.
+app.listen(PORT, "127.0.0.1", () =>
+  console.log(`WhatsApp service running on 127.0.0.1:${PORT}`)
+);
