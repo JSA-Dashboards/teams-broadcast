@@ -46,13 +46,30 @@ def _sf_secret(name, default=""):
     return os.environ.get(name, default).strip()
 
 
+def _load_private_key():
+    """RSA private key (DER bytes) for key-pair auth; None if not configured (then
+    password is used). The account enforces MFA on password sign-ins, so Streamlit
+    Cloud must use the key -- PEM text in the SNOWFLAKE_PRIVATE_KEY secret."""
+    pem = _sf_secret("SNOWFLAKE_PRIVATE_KEY")
+    path = _sf_secret("SNOWFLAKE_PRIVATE_KEY_PATH")
+    if not pem and not path:
+        return None
+    from cryptography.hazmat.primitives import serialization
+    data = open(path, "rb").read() if path else pem.replace("\\n", "\n").encode()
+    pwd = _sf_secret("SNOWFLAKE_PRIVATE_KEY_PWD") or None
+    key = serialization.load_pem_private_key(data, password=pwd.encode() if pwd else None)
+    return key.private_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption())
+
+
 @st.cache_resource(show_spinner=False)
 def _sf_conn():
     import snowflake.connector
-    return snowflake.connector.connect(
+    kw = dict(
         account=_sf_secret("SNOWFLAKE_ACCOUNT"),
         user=_sf_secret("SNOWFLAKE_USER"),
-        password=_sf_secret("SNOWFLAKE_PASSWORD"),
         role=_sf_secret("SNOWFLAKE_ROLE") or None,
         warehouse=_sf_secret("SNOWFLAKE_WAREHOUSE") or None,
         database=_sf_secret("SNOWFLAKE_DATABASE") or "JSA",
@@ -64,6 +81,12 @@ def _sf_conn():
         client_session_keep_alive=True,
         login_timeout=30,
     )
+    pkey = _load_private_key()
+    if pkey is not None:
+        kw["private_key"] = pkey
+    else:
+        kw["password"] = _sf_secret("SNOWFLAKE_PASSWORD")
+    return snowflake.connector.connect(**kw)
 
 
 def sb_get(key, default=None):
