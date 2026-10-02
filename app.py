@@ -372,6 +372,10 @@ st.title("📣 Teams Broadcast Tool")
 
 st.markdown("""
 <style>
+/* ── Hide Streamlit chrome ── */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
 /* ── Spellcheck ── */
 textarea { spellcheck: true; }
 
