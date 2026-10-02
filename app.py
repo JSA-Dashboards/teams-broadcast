@@ -479,9 +479,6 @@ if "wa_status_cache" not in st.session_state:
 if "wa_status_ts" not in st.session_state:
     st.session_state.wa_status_ts = 0.0
 # Rotate keys at the TOP of the run after a send, before any widget renders
-if st.session_state.pop("_teams_sent", False):
-    st.session_state.message_key += 1
-    st.session_state.uploader_key += 1
 if st.session_state.pop("_wa_sent", False):
     st.session_state.wa_message_key += 1
     st.session_state.wa_uploader_key += 1
@@ -619,7 +616,8 @@ with tab_broadcast:
 
             bar.empty()
             st.session_state.last_teams_send = time.time()
-            st.session_state._teams_sent = True  # keys rotate at top of next run
+            st.session_state.message_key += 1
+            st.session_state.uploader_key += 1
             if failed == 0:
                 st.success(f"Sent to all {success} chats successfully.")
             else:
@@ -692,7 +690,7 @@ with tab_whatsapp:
         wa_group_options = sorted(wa_groups.get("subgroups", {}).keys())
         wa_selected = st.selectbox("Send to", wa_group_options, key="wa_group_select")
 
-        wa_target_ids = wa_groups["subgroups"].get(wa_selected, [])
+        wa_target_ids = [cid for cid in wa_groups["subgroups"].get(wa_selected, []) if cid not in wa_hidden]
 
         with st.expander(f"Refine recipients ({len(wa_target_ids)} selected)", expanded=False):
             st.caption("Uncheck any contacts to skip for this send only.")
@@ -856,7 +854,7 @@ with tab_groups:
     if st.button("Save Hidden List", type="primary"):
         groups["hidden"] = new_hidden
         save_groups(groups, profile)
-        st.success("Hidden list saved. Refresh the page to see the updated chat list.")
+        st.rerun()
 
     # ── WhatsApp Groups ────────────────────────────────────────────────────────
     st.divider()
@@ -945,7 +943,7 @@ with tab_groups:
         if st.button("Save WA Hidden List", type="primary"):
             wa_groups_edit["hidden"] = wa_new_hidden
             save_wa_groups(wa_groups_edit, profile)
-            st.success("Saved.")
+            st.rerun()
 
 # ── Settings tab ──────────────────────────────────────────────────────────────
 
