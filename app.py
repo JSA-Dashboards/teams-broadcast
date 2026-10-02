@@ -357,19 +357,51 @@ def save_wa_groups(groups, profile):
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
-st.set_page_config(page_title="Teams Broadcast", page_icon="📣", layout="wide")
-
-# Hide the Streamlit Community Cloud viewer badge (the profile avatar that links
-# to the creator's other apps) for a clean, client-facing footer.
-st.markdown(
-    "<style>[class*='_profileContainer_']{display:none !important;}</style>",
-    unsafe_allow_html=True,
-)
+st.set_page_config(page_title="Teams Broadcast", page_icon="📣", layout="centered")
 st.title("📣 Teams Broadcast Tool")
 
 st.markdown("""
 <style>
+/* ── Spellcheck ── */
 textarea { spellcheck: true; }
+
+/* ── Mobile-first layout ── */
+/* Full-width primary buttons everywhere */
+.stButton > button {
+    width: 100%;
+    min-height: 48px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 8px;
+}
+/* Tabs: scroll horizontally on narrow screens, don't wrap */
+.stTabs [data-baseweb="tab-list"] {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    gap: 0;
+    scrollbar-width: none;
+}
+.stTabs [data-baseweb="tab-list"]::-webkit-scrollbar { display: none; }
+.stTabs [data-baseweb="tab"] {
+    white-space: nowrap;
+    padding: 8px 14px;
+    font-size: 0.9rem;
+}
+/* File uploader — larger tap area on mobile */
+[data-testid="stFileUploader"] {
+    width: 100%;
+}
+/* Expander tap target */
+details summary {
+    padding: 10px 0;
+}
+/* Selectbox full width */
+[data-testid="stSelectbox"] { width: 100%; }
+/* Remove excess top padding on mobile */
+@media (max-width: 640px) {
+    .block-container { padding-top: 1rem !important; }
+    h1 { font-size: 1.4rem !important; }
+}
 </style>
 <script>
 document.querySelectorAll('textarea').forEach(t => t.spellcheck = true);
@@ -386,14 +418,11 @@ if not st.session_state.profile:
     profiles = load_profiles()
 
     if profiles:
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            selected_profile = st.selectbox("Select your profile", profiles)
-        with col1:
-            if st.button("Continue", type="primary"):
-                st.session_state.profile = selected_profile
-                st.query_params["profile"] = selected_profile
-                st.rerun()
+        selected_profile = st.selectbox("Select your profile", profiles)
+        if st.button("Continue", type="primary"):
+            st.session_state.profile = selected_profile
+            st.query_params["profile"] = selected_profile
+            st.rerun()
 
     st.divider()
     st.write("**Add a new profile**")
@@ -495,7 +524,7 @@ with st.sidebar:
         st.query_params.clear()
         st.rerun()
 
-tab_broadcast, tab_whatsapp, tab_groups, tab_settings = st.tabs(["📣 Teams Broadcast", "💬 WhatsApp Broadcast", "👥 Manage Groups", "⚙️ Settings"])
+tab_broadcast, tab_whatsapp, tab_groups, tab_settings = st.tabs(["📣 Teams", "💬 WhatsApp", "👥 Groups", "⚙️ Settings"])
 
 # ── Broadcast tab ─────────────────────────────────────────────────────────────
 
@@ -514,9 +543,9 @@ with tab_broadcast:
     )
 
     if uploaded_files:
-        cols = st.columns(min(len(uploaded_files), 4))
+        cols = st.columns(min(len(uploaded_files), 2))
         for i, f in enumerate(uploaded_files):
-            cols[i % 4].image(f, use_container_width=True)
+            cols[i % 2].image(f, use_container_width=True)
 
     group_options = sorted(groups.get("subgroups", {}).keys())
     selected = st.selectbox("Send to", group_options, key="teams_group_select")
@@ -642,9 +671,9 @@ with tab_whatsapp:
             key=f"wa_uploader_{st.session_state.wa_uploader_key}"
         )
         if wa_uploaded:
-            cols = st.columns(min(len(wa_uploaded), 4))
+            cols = st.columns(min(len(wa_uploaded), 2))
             for i, f in enumerate(wa_uploaded):
-                cols[i % 4].image(f, use_container_width=True)
+                cols[i % 2].image(f, use_container_width=True)
 
         wa_group_options = sorted(wa_groups.get("subgroups", {}).keys())
         wa_selected = st.selectbox("Send to", wa_group_options, key="wa_group_select")
