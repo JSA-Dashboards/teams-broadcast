@@ -357,7 +357,7 @@ def save_wa_groups(groups, profile):
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
-st.set_page_config(page_title="Teams Broadcast", page_icon="📣", layout="centered")
+st.set_page_config(page_title="Teams Broadcast", page_icon=":material/campaign:", layout="centered")
 
 # The Streamlit Cloud badge (creator avatar + logo) is drawn by Cloud's outer page,
 # outside this iframe, so CSS here can't reach it; add the rule to the parent
@@ -368,58 +368,69 @@ try:
 except TypeError:  # older Streamlit without st.html JS support
     import streamlit.components.v1 as _stc
     _stc.html(_BADGE_JS, height=0)
-st.title("📣 Teams Broadcast Tool")
-
 st.markdown("""
 <style>
-/* ── Hide Streamlit chrome ── */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-/* ── Spellcheck ── */
-textarea { spellcheck: true; }
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Source+Sans+3:wght@400;600;700&display=swap');
+html, body, [data-testid="stAppViewContainer"] { background-color:#f6f8f7; color:#32373c; }
+html, body, p, span, div, label, button, td, th { font-family:'Source Sans 3','Source Sans Pro',sans-serif; }
+.block-container { padding-top: 2rem; max-width: 760px; }
 
-/* ── Mobile-first layout ── */
-/* Full-width primary buttons everywhere */
+/* Header */
+.dash-header { display:flex; align-items:center; gap:18px; padding-bottom:10px;
+    border-bottom:1px solid #d7e2dc; margin-bottom:14px; }
+.dash-header img { height:40px; }
+.dash-header .t b { font-family:'EB Garamond',Georgia,serif; font-size:1.7rem; color:#32373c; font-weight:600; }
+.dash-header .t div { font-size:.85rem; color:#5f7267; }
+
+/* Hide Streamlit chrome */
+#MainMenu, footer, header { visibility:hidden; }
+.stDeployButton { display:none; }
+
+/* Cards: expanders, forms, bordered containers */
+[data-testid="stExpander"], [data-testid="stForm"], [data-testid="stVerticalBlockBorderWrapper"] {
+    background:#ffffff; border:1px solid #d7e2dc !important; border-radius:10px;
+}
+[data-testid="stAlert"] { border-radius:8px; }
+hr { border-color:#d7e2dc; }
+h2, h3 { font-family:'EB Garamond',Georgia,serif; font-weight:600; color:#32373c; }
+
+/* Inputs */
+[data-baseweb="select"] > div, [data-baseweb="textarea"], [data-baseweb="input"] {
+    border-color:#d7e2dc !important; border-radius:8px; background:#ffffff;
+}
+[data-testid="stFileUploader"] { width:100%; }
+[data-testid="stFileUploaderDropzone"] { background:#ffffff; border:1px dashed #b8c4bc; border-radius:10px; }
+textarea { spellcheck:true; }
+details summary { padding:10px 0; }
+
+/* Buttons: full width, 48px touch target */
 .stButton > button {
-    width: 100%;
-    min-height: 48px;
-    font-size: 1rem;
-    font-weight: 600;
-    border-radius: 8px;
+    width:100%; min-height:48px; font-size:1rem; font-weight:600; border-radius:8px;
 }
-/* Tabs: scroll horizontally on narrow screens, don't wrap */
+.stButton > button[kind="primary"] { background:#5e7164; border-color:#5e7164; }
+.stButton > button[kind="primary"]:hover { background:#4d5e53; border-color:#4d5e53; }
+.stButton > button[kind="secondary"] { background:#ffffff; border:1px solid #d7e2dc; color:#32373c; }
+
+/* Tabs: scroll on narrow screens, JSA-green underline */
 .stTabs [data-baseweb="tab-list"] {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    gap: 0;
-    scrollbar-width: none;
+    overflow-x:auto; flex-wrap:nowrap; gap:0; scrollbar-width:none; border-bottom:1px solid #d7e2dc;
 }
-.stTabs [data-baseweb="tab-list"]::-webkit-scrollbar { display: none; }
-.stTabs [data-baseweb="tab"] {
-    white-space: nowrap;
-    padding: 8px 14px;
-    font-size: 0.9rem;
-}
-/* File uploader — larger tap area on mobile */
-[data-testid="stFileUploader"] {
-    width: 100%;
-}
-/* Expander tap target */
-details summary {
-    padding: 10px 0;
-}
-/* Selectbox full width */
-[data-testid="stSelectbox"] { width: 100%; }
-/* Remove excess top padding on mobile */
+.stTabs [data-baseweb="tab-list"]::-webkit-scrollbar { display:none; }
+.stTabs [data-baseweb="tab"] { white-space:nowrap; padding:8px 14px; font-size:.95rem; font-weight:600; color:#5f7267; }
+.stTabs [aria-selected="true"] { color:#32373c; }
+.stTabs [data-baseweb="tab-highlight"] { background-color:#5e7164; }
+
 @media (max-width: 640px) {
     .block-container { padding-top: 1rem !important; }
-    h1 { font-size: 1.4rem !important; }
+    .dash-header img { display:none; }
+    .dash-header .t b { font-size:1.4rem; }
 }
 </style>
-<script>
-document.querySelectorAll('textarea').forEach(t => t.spellcheck = true);
-</script>
+<div class="dash-header">
+  <img src="https://www.jpsi.com/wp-content/themes/gate39media/img/logo-full.png">
+  <div class="t"><b>Teams Broadcast</b>
+  <div>Teams &amp; WhatsApp messaging &middot; John Stewart &amp; Associates</div></div>
+</div>
 """, unsafe_allow_html=True)
 
 # ── Profile selector ──────────────────────────────────────────────────────────
@@ -535,7 +546,7 @@ with st.sidebar:
         st.query_params.clear()
         st.rerun()
 
-tab_broadcast, tab_whatsapp, tab_groups, tab_settings = st.tabs(["📣 Teams", "💬 WhatsApp", "👥 Groups", "⚙️ Settings"])
+tab_broadcast, tab_whatsapp, tab_groups, tab_settings = st.tabs([":material/groups: Teams", ":material/chat: WhatsApp", ":material/group_add: Groups", ":material/settings: Settings"])
 
 # ── Broadcast tab ─────────────────────────────────────────────────────────────
 
