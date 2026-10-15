@@ -409,6 +409,10 @@ details summary { padding:10px 0; }
 }
 .stButton > button[kind="primary"] { background:#5e7164; border-color:#5e7164; }
 .stButton > button[kind="primary"]:hover { background:#4d5e53; border-color:#4d5e53; }
+.stButton > button[kind="primary"], .stButton > button[kind="primary"] *,
+.stButton > button[kind="primary"]:hover, .stButton > button[kind="primary"]:hover *,
+.stButton > button[kind="primary"]:disabled, .stButton > button[kind="primary"]:disabled * { color:#ffffff !important; }
+.stButton > button[kind="primary"]:disabled { opacity:.55; }
 .stButton > button[kind="secondary"] { background:#ffffff; border:1px solid #d7e2dc; color:#32373c; }
 
 /* Tabs: scroll on narrow screens, JSA-green underline */
